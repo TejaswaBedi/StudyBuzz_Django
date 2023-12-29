@@ -2,25 +2,23 @@ from django.shortcuts import render, redirect
 from django.http import HttpResponse
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q
-from django.contrib.auth.models import User
 from django.contrib.auth import authenticate, login, logout
-from django.contrib.auth.forms import UserCreationForm
 from django.contrib import messages
-from .models import Room, Topic, Message
-from .forms import RoomForm, UserForm
+from .models import Room, Topic, Message, User
+from .forms import RoomForm, UserForm, MyUserCreationForm
 
 def loginPage(request):
     page = "login"
     if(request.user.is_authenticated):
         return(redirect("home"))
     if(request.method == "POST"):
-        username = request.POST.get('username').lower()
+        email = request.POST.get('email').lower()
         password = request.POST.get('password')
         try:
-            user = User.objects.get(username=username)
+            user = User.objects.get(email=email)
         except:
             messages.error(request, "Invalid Credentials")
-        user = authenticate(request, username=username, password=password)
+        user = authenticate(request, email=email, password=password)
         if(user is not None):
             login(request, user)
             return(redirect("home"))
@@ -32,12 +30,12 @@ def loginPage(request):
 
 def logoutUser(request):
     logout(request)
-    return(redirect("home"))
+    return(redirect("login"))
 
 def registerUser(request):
-    form = UserCreationForm()
+    form = MyUserCreationForm()
     if(request.method == "POST"):
-        form = UserCreationForm(request.POST)
+        form = MyUserCreationForm(request.POST)
         if(form.is_valid()):
             user = form.save(commit=False)
             user.username = user.username.lower()
@@ -45,7 +43,7 @@ def registerUser(request):
             login(request, user)
             return(redirect("home"))
         else:
-            messages.error(request, "An error occured during registration !")
+            messages.error(request, "An error occured during registration !(Maybe your password is too similar to other information provided.)")
     return(render(request, "base/login_register.html", {"form":form}))
 
 def home(request):
@@ -142,7 +140,7 @@ def updateUser(request):
     user = request.user
     form = UserForm(instance=user)
     if(request.method == "POST"):
-        form = UserForm(request.POST, instance=user)
+        form = UserForm(request.POST, request.FILES, instance=user)
         if(form.is_valid()):
             form.save()
             return redirect('user-profile', pk=user.id)
